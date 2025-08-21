@@ -1,5 +1,6 @@
 import MapKit
 import SwiftUI
+import Perception
 
 #if os(macOS)
   public typealias ViewRepresentable = NSViewRepresentable

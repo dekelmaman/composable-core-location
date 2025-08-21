@@ -14,21 +14,21 @@ private let readMe = """
 
 struct LocationManagerView: View {
   @Environment(\.colorScheme) var colorScheme
-  let store: Store<AppState, AppAction>
+  @Perception.Bindable var store: Store<AppState, AppAction>
 
   var body: some View {
-    WithViewStore(self.store) { viewStore in
+    WithPerceptionTracking {
       ZStack {
         MapView(
-          pointsOfInterest: viewStore.pointsOfInterest,
-          region: viewStore.binding(get: { $0.region }, send: AppAction.updateRegion)
+          pointsOfInterest: store.pointsOfInterest,
+          region: $store.region.sending(\.updateRegion)
         )
         .edgesIgnoringSafeArea([.all])
 
         VStack(alignment: .trailing) {
           Spacer()
 
-          Button(action: { viewStore.send(.currentLocationButtonTapped) }) {
+          Button(action: { store.send(.currentLocationButtonTapped) }) {
             Image(systemName: "location")
               .foregroundColor(Color.white)
               .frame(width: 60, height: 60)
@@ -41,13 +41,15 @@ struct LocationManagerView: View {
           ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 16) {
               ForEach(AppState.pointOfInterestCategories, id: \.rawValue) { category in
-                Button(category.displayName) { viewStore.send(.categoryButtonTapped(category)) }
-                  .padding([.all], 16)
-                  .background(
-                    category == viewStore.pointOfInterestCategory ? Color.blue : Color.secondary
-                  )
-                  .foregroundColor(.white)
-                  .cornerRadius(8)
+                WithPerceptionTracking {
+                  Button(category.displayName) { store.send(.categoryButtonTapped(category)) }
+                    .padding([.all], 16)
+                    .background(
+                      category == store.pointOfInterestCategory ? Color.blue : Color.secondary
+                    )
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                }
               }
             }
             .padding([.leading, .trailing])
@@ -55,9 +57,16 @@ struct LocationManagerView: View {
           }
         }
       }
-      .alert(self.store.scope(state: { $0.alert }), dismiss: .dismissAlertButtonTapped)
-      .onAppear { viewStore.send(.onAppear) }
-      .onDisappear { viewStore.send(.onDisappear) }
+      .alert(
+        item: Binding(
+          get: { store.alert },
+          set: { _ in store.send(.dismissAlertButtonTapped) }
+        )
+      ) { alert in
+        Alert(title: Text(alert.title))
+      }
+      .onAppear { store.send(.onAppear) }
+      .onDisappear { store.send(.onDisappear) }
     }
   }
 }
@@ -74,11 +83,9 @@ struct ContentView: View {
           NavigationLink(
             "Go to demo",
             destination: LocationManagerView(
-              store: Store(
-                initialState: AppState(),
-                reducer: appReducer,
-                environment: AppEnvironment(localSearch: .live, locationManager: .live)
-              )
+              store: Store(initialState: AppState()) {
+                AppReducer()
+              }
             )
           )
         }
@@ -101,21 +108,27 @@ struct ContentView: View {
       let locationManagerSubject = PassthroughSubject<LocationManager.Action, Never>()
       var locationManager = LocationManager.live
       locationManager.authorizationStatus = { .authorizedAlways }
-      locationManager.delegate = { locationManagerSubject.eraseToEffect() }
+      locationManager.delegate = {
+        AsyncStream { continuation in
+          let cancellable = locationManagerSubject.sink { action in
+            continuation.yield(action)
+          }
+          continuation.onTermination = { _ in
+            cancellable.cancel()
+          }
+        }
+      }
       locationManager.locationServicesEnabled = { true }
       locationManager.requestLocation = {
-        .fireAndForget { locationManagerSubject.send(.didUpdateLocations([mockLocation])) }
+        locationManagerSubject.send(.didUpdateLocations([mockLocation]))
       }
 
       let appView = LocationManagerView(
-        store: Store(
-          initialState: AppState(),
-          reducer: appReducer,
-          environment: AppEnvironment(
-            localSearch: .live,
-            locationManager: locationManager
-          )
-        )
+        store: Store(initialState: AppState()) {
+          AppReducer()
+        } withDependencies: {
+          $0.locationManager = locationManager
+        }
       )
 
       return Group {

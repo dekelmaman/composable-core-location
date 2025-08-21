@@ -1,6 +1,6 @@
 import Combine
 import ComposableArchitecture
-import CoreLocation
+@preconcurrency import CoreLocation
 
 extension LocationManager {
   /// The live implementation of the `LocationManager` interface. This implementation is capable of
@@ -18,13 +18,13 @@ extension LocationManager {
   /// ```
   public static var live: Self {
 
-    let manager = CLLocationManager()
+    nonisolated(unsafe) let manager = CLLocationManager()
 
-    let delegate = AsyncStream { continuation in
+    nonisolated(unsafe) let delegate = AsyncStream { continuation in
       let delegate = LocationManagerDelegate(continuation: continuation)
 
       manager.delegate = delegate
-      continuation.onTermination = { _ in
+      continuation.onTermination = { [delegate] _ in
         _ = delegate
       }
     }
@@ -229,7 +229,7 @@ extension LocationManager {
   }
 }
 
-private class LocationManagerDelegate: NSObject, CLLocationManagerDelegate {
+private final class LocationManagerDelegate: NSObject, CLLocationManagerDelegate, @unchecked Sendable {
 
   let continuation: AsyncStream<LocationManager.Action>.Continuation
 

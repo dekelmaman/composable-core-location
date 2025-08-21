@@ -1,9 +1,9 @@
-import CoreLocation
+@preconcurrency import CoreLocation
 
 /// A value type wrapper for `CLLocation`. This type is necessary so that we can do equality checks
 /// and write tests against its values.
 @dynamicMemberLookup
-public struct Location {
+public struct Location: Hashable, Sendable {
   public let rawValue: CLLocation
 
   public init(
@@ -35,7 +35,7 @@ public struct Location {
   }
 }
 
-extension Location: Hashable {
+extension Location {
   public static func == (lhs: Self, rhs: Self) -> Bool {
     let courseAccuracyIsEqual: Bool
     let speedAccuracyIsEqual: Bool
