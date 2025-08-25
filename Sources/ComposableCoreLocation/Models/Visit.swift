@@ -1,4 +1,4 @@
-import CoreLocation
+@preconcurrency import CoreLocation
 
 /// A value type wrapper for `CLVisit`. This type is necessary so that we can do equality checks
 /// and write tests against its values.
@@ -6,7 +6,7 @@ import CoreLocation
 @available(macOS, unavailable)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
-public struct Visit: Hashable {
+public struct Visit: Hashable, Sendable {
   public let rawValue: CLVisit?
 
   public var arrivalDate: Date

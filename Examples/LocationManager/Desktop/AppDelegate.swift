@@ -8,14 +8,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationDidFinishLaunching(_ aNotification: Notification) {
     let contentView = LocationManagerView(
-      store: Store(
-        initialState: AppState(),
-        reducer: appReducer,
-        environment: AppEnvironment(
-          localSearch: .live,
-          locationManager: .live
-        )
-      )
+      store: Store(initialState: AppState()) {
+        AppReducer()
+      }
     )
 
     window = NSWindow(

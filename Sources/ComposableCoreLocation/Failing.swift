@@ -1,5 +1,5 @@
 import ComposableArchitecture
-import CoreLocation
+@preconcurrency import CoreLocation
 import XCTestDynamicOverlay
 
 extension LocationManager {
@@ -38,17 +38,45 @@ extension LocationManager {
   /// }
   /// ```
   public static let failing = Self(
-    accuracyAuthorization: unimplemented("A failing endpoint was accessed: 'LocationManager.accuracyAuthorization'"),
-    authorizationStatus: unimplemented("A failing endpoint was accessed: 'LocationManager.authorizationStatus'"),
-    delegate: { AsyncStream { _ in } },
+    accuracyAuthorization: unimplemented(
+        "A failing endpoint was accessed: 'LocationManager.accuracyAuthorization'",
+        placeholder: .reducedAccuracy
+    ),
+    authorizationStatus: unimplemented(
+        "A failing endpoint was accessed: 'LocationManager.authorizationStatus'",
+        placeholder: .denied
+    ),
+    delegate: { AsyncStream { _ in }
+    },
     dismissHeadingCalibrationDisplay: { },
-    heading: unimplemented("A failing endpoint was accessed: 'LocationManager.heading'"),
-    headingAvailable: unimplemented("A failing endpoint was accessed: 'LocationManager.headingAvailable'"),
-    isRangingAvailable: unimplemented("A failing endpoint was accessed: 'LocationManager.isRangingAvailable'"),
-    location: unimplemented("A failing endpoint was accessed: 'LocationManager.location'"),
-    locationServicesEnabled: unimplemented("A failing endpoint was accessed: 'LocationManager.locationServicesEnabled'"),
-    maximumRegionMonitoringDistance: unimplemented("A failing endpoint was accessed: 'LocationManager.maximumRegionMonitoringDistance'"),
-    monitoredRegions: unimplemented("A failing endpoint was accessed: 'LocationManager.monitoredRegions'"),
+    heading: unimplemented(
+        "A failing endpoint was accessed: 'LocationManager.heading'",
+        placeholder: nil
+    ),
+    headingAvailable: unimplemented(
+        "A failing endpoint was accessed: 'LocationManager.headingAvailable'",
+        placeholder: false
+    ),
+    isRangingAvailable: unimplemented(
+        "A failing endpoint was accessed: 'LocationManager.isRangingAvailable'",
+        placeholder: false
+    ),
+    location: unimplemented(
+        "A failing endpoint was accessed: 'LocationManager.location'",
+        placeholder: nil
+    ),
+    locationServicesEnabled: unimplemented(
+        "A failing endpoint was accessed: 'LocationManager.locationServicesEnabled'",
+        placeholder: false
+    ),
+    maximumRegionMonitoringDistance: unimplemented(
+        "A failing endpoint was accessed: 'LocationManager.maximumRegionMonitoringDistance'",
+        placeholder: CLLocationDistance(0)
+    ),
+    monitoredRegions: unimplemented(
+        "A failing endpoint was accessed: 'LocationManager.monitoredRegions'",
+        placeholder: []
+    ),
     requestAlwaysAuthorization: { },
     requestLocation: {  },
     requestWhenInUseAuthorization: { },

@@ -14,32 +14,38 @@ import XCTest
 class LocationManagerTests: XCTestCase {
   func testRequestLocation_Allow() {
     let store = TestStore(
-      initialState: AppState(),
-      reducer: appReducer,
-      environment: AppEnvironment(
-        localSearch: .failing,
-        locationManager: .failing
-      )
-    )
+      initialState: AppState()
+    ) {
+      AppReducer()
+    }
 
     var didRequestInUseAuthorization = false
     var didRequestLocation = false
     let locationManagerSubject = PassthroughSubject<LocationManager.Action, Never>()
 
-    store.environment.locationManager.authorizationStatus = { .notDetermined }
-    store.environment.locationManager.delegate = { locationManagerSubject.eraseToEffect() }
-    store.environment.locationManager.locationServicesEnabled = { true }
-    store.environment.locationManager.requestLocation = {
-      .fireAndForget { didRequestLocation = true }
+    store.dependencies.locationManager.authorizationStatus = { .notDetermined }
+    store.dependencies.locationManager.delegate = {
+      AsyncStream { continuation in
+        let cancellable = locationManagerSubject.sink { action in
+          continuation.yield(action)
+        }
+        continuation.onTermination = { _ in
+          cancellable.cancel()
+        }
+      }
+    }
+    store.dependencies.locationManager.locationServicesEnabled = { true }
+    store.dependencies.locationManager.requestLocation = {
+      didRequestLocation = true
     }
 
     #if os(iOS)
-      store.environment.locationManager.requestWhenInUseAuthorization = {
-        .fireAndForget { didRequestInUseAuthorization = true }
+      store.dependencies.locationManager.requestWhenInUseAuthorization = {
+        didRequestInUseAuthorization = true
       }
     #elseif os(macOS)
-      store.environment.locationManager.requestAlwaysAuthorization = {
-        .fireAndForget { didRequestInUseAuthorization = true }
+      store.dependencies.locationManager.requestAlwaysAuthorization = {
+        didRequestInUseAuthorization = true
       }
     #endif
 
@@ -149,7 +155,7 @@ class LocationManagerTests: XCTestCase {
       mapItems: [mapItem]
     )
 
-    store.environment.localSearch.search = { _ in EffectPublisher(value: localSearchResponse) }
+    store.dependencies.localSearch.search = { _ in Effect(value: .success(localSearchResponse)) }
 
     store.send(.categoryButtonTapped(.cafe)) {
       $0.pointOfInterestCategory = .cafe
@@ -169,13 +175,10 @@ class LocationManagerTests: XCTestCase {
     let store = TestStore(
       initialState: AppState(
         pointOfInterestCategory: .cafe
-      ),
-      reducer: appReducer,
-      environment: AppEnvironment(
-        localSearch: .failing,
-        locationManager: .failing
       )
-    )
+    ) {
+      AppReducer()
+    }
 
     let mapItem = MapItem(
       isCurrentLocation: false,
@@ -191,7 +194,7 @@ class LocationManagerTests: XCTestCase {
       mapItems: [mapItem]
     )
 
-    store.environment.localSearch.search = { _ in EffectPublisher(value: localSearchResponse) }
+    store.dependencies.localSearch.search = { _ in Effect(value: .success(localSearchResponse)) }
 
     let coordinateRegion = CoordinateRegion(
       center: CLLocationCoordinate2D(latitude: 10, longitude: 20),

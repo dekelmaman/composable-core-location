@@ -6,14 +6,17 @@ import SwiftUI
 
 struct LocationManagerView: View {
   @Environment(\.colorScheme) var colorScheme
-  let store: Store<AppState, AppAction>
+  @Perception.Bindable var store: Store<AppState, AppAction>
 
   var body: some View {
-    WithViewStore(self.store) { viewStore in
+    WithPerceptionTracking {
       ZStack {
         MapView(
-          pointsOfInterest: viewStore.pointsOfInterest,
-          region: viewStore.binding(get: { $0.region }, send: AppAction.updateRegion)
+          pointsOfInterest: store.pointsOfInterest,
+          region: Binding(
+            get: { store.region },
+            set: { store.send(.updateRegion($0)) }
+          )
         )
         .edgesIgnoringSafeArea([.all])
 
@@ -22,19 +25,21 @@ struct LocationManagerView: View {
 
           HStack(spacing: 16) {
             ForEach(AppState.pointOfInterestCategories, id: \.rawValue) { category in
-              Button(category.displayName) { viewStore.send(.categoryButtonTapped(category)) }
-                .buttonStyle(PlainButtonStyle())
-                .padding([.all], 12)
-                .background(
-                  category == viewStore.pointOfInterestCategory ? Color.blue : Color.secondary
-                )
-                .foregroundColor(.white)
-                .cornerRadius(8)
+              WithPerceptionTracking {
+                Button(category.displayName) { store.send(.categoryButtonTapped(category)) }
+                  .buttonStyle(PlainButtonStyle())
+                  .padding([.all], 12)
+                  .background(
+                    category == store.pointOfInterestCategory ? Color.blue : Color.secondary
+                  )
+                  .foregroundColor(.white)
+                  .cornerRadius(8)
+              }
             }
 
             Spacer()
 
-            Button(action: { viewStore.send(.currentLocationButtonTapped) }) {
+            Button(action: { store.send(.currentLocationButtonTapped) }) {
               Text("📍")
                 .font(.body)
                 .foregroundColor(Color.white)
@@ -49,8 +54,15 @@ struct LocationManagerView: View {
           .padding([.bottom], 16)
         }
       }
-      .alert(self.store.scope(state: { $0.alert }), dismiss: .dismissAlertButtonTapped)
-      .onAppear { viewStore.send(.onAppear) }
+      .alert(
+        item: Binding(
+          get: { store.alert },
+          set: { _ in store.send(.dismissAlertButtonTapped) }
+        )
+      ) { alert in
+        Alert(title: Text(alert.title))
+      }
+      .onAppear { store.send(.onAppear) }
     }
   }
 }
@@ -58,14 +70,9 @@ struct LocationManagerView: View {
 struct ContentView_Previews: PreviewProvider {
   static var previews: some View {
     let appView = LocationManagerView(
-      store: Store(
-        initialState: AppState(),
-        reducer: appReducer,
-        environment: AppEnvironment(
-          localSearch: .live,
-          locationManager: .live
-        )
-      )
+      store: Store(initialState: AppState()) {
+        AppReducer()
+      }
     )
 
     return Group {

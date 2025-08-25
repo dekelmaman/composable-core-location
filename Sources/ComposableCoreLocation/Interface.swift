@@ -1,6 +1,6 @@
 import Combine
 import ComposableArchitecture
-import CoreLocation
+@preconcurrency import CoreLocation
 
 /// A wrapper around Core Location's `CLLocationManager` that exposes its functionality through
 /// effects and actions, making it easy to use with the Composable Architecture and easy to test.
@@ -178,11 +178,11 @@ import CoreLocation
 /// control, and even what happens when the request for their location fails. It is very easy to
 /// write these tests, and we can test deep, subtle properties of our application.
 ///
-public struct LocationManager {
+public struct LocationManager: Sendable {
   /// Actions that correspond to `CLLocationManagerDelegate` methods.
   ///
   /// See `CLLocationManagerDelegate` for more information.
-  public enum Action: Equatable {
+  public enum Action: Equatable, Sendable {
     case didChangeAuthorization(CLAuthorizationStatus)
 
     @available(tvOS, unavailable)
@@ -245,7 +245,7 @@ public struct LocationManager {
     case didRangeBeacons([Beacon], satisfyingConstraint: CLBeaconIdentityConstraint)
   }
 
-  public struct Error: Swift.Error, Equatable {
+  public struct Error: Swift.Error, Equatable, Sendable {
     public let error: NSError
 
     public init(_ error: Swift.Error) {
@@ -253,27 +253,27 @@ public struct LocationManager {
     }
   }
 
-  public var accuracyAuthorization: () -> AccuracyAuthorization?
+  public var accuracyAuthorization: @Sendable () -> AccuracyAuthorization?
 
-  public var authorizationStatus: () -> CLAuthorizationStatus
+  public var authorizationStatus: @Sendable () -> CLAuthorizationStatus
 
   public var delegate: @Sendable () -> AsyncStream<Action> = { .finished }
 
   public var dismissHeadingCalibrationDisplay: @Sendable () async -> Void
 
-  public var heading: () -> Heading?
+  public var heading: @Sendable () -> Heading?
 
-  public var headingAvailable: () -> Bool
+  public var headingAvailable: @Sendable () -> Bool
 
-  public var isRangingAvailable: () -> Bool
+  public var isRangingAvailable: @Sendable () -> Bool
 
-  public var location: () -> Location?
+  public var location: @Sendable () -> Location?
 
-  public var locationServicesEnabled: () -> Bool
+  public var locationServicesEnabled: @Sendable () -> Bool
 
-  public var maximumRegionMonitoringDistance: () -> CLLocationDistance
+  public var maximumRegionMonitoringDistance: @Sendable () -> CLLocationDistance
 
-  public var monitoredRegions: () -> Set<Region>
+  public var monitoredRegions: @Sendable () -> Set<Region>
 
   public var requestAlwaysAuthorization: @Sendable () async -> Void
 
@@ -285,7 +285,7 @@ public struct LocationManager {
 
   public var set: @Sendable (Properties) async -> Void
 
-  public var significantLocationChangeMonitoringAvailable: () -> Bool
+  public var significantLocationChangeMonitoringAvailable: @Sendable () -> Bool
 
   public var startMonitoringForRegion: @Sendable (Region) async -> Void
 
@@ -333,6 +333,19 @@ public struct LocationManager {
       )
     )
 #endif
+  }
+}
+
+// MARK: - Dependency
+
+private enum LocationManagerKey: DependencyKey {
+  static let liveValue = LocationManager.live
+}
+
+extension DependencyValues {
+  public var locationManager: LocationManager {
+    get { self[LocationManagerKey.self] }
+    set { self[LocationManagerKey.self] = newValue }
   }
 }
 
